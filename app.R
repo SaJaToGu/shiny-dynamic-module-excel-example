@@ -145,9 +145,10 @@ ExcelSrv <-
                     
                     # UI create a new tab for each excel sheet (dynamic)
                     sheetlist %>%
-                        purrr::pmap(., function(taglist, ...) shiny::appendTab(inputId = "Sheets",
+                        mutate(is_first = (sheetname == first(sheetname))) %>% 
+                        purrr::pmap(., function(taglist, is_first, ...) shiny::appendTab(inputId = "Sheets",
                                                                                taglist,
-                                                                               select = TRUE))
+                                                                               select = is_first))
                     # Server call module for each excel sheet (dynamic)
                     sheetlist %>%
                         purrr::pmap(., function(sheetid, sheetname, ...) ExcelSheetSrv(
