@@ -168,7 +168,7 @@ ShinyDynModExcelUi <-
              icon = NULL) {
         ns <- shiny::NS(id)
         shiny::tabPanel(title = title,
-                        shiny::fileInput(ns("file"), "Upload Excel files", buttonLabel = "Upload..."),
+                        shiny::fileInput(ns("file"), "Upload Excel files", multiple = TRUE, buttonLabel = "Upload..."),
                         shiny::actionButton(inputId = ns("Close"), label = "Close Excel"),
                         shiny::tabsetPanel(id = ns("excels"))
         )
@@ -186,16 +186,35 @@ ShinyDynModExcelSrv <-
                     shiny::removeTab(inputId = "excels", target = input$excels)
                 })
                 # Upload Excel files ---------------------------------------------------------------
-                shiny::observeEvent(input$file,{
-                    shiny::req(input$file$name)
-                    ExcelTabId <- make.names(input$file$name)
-                    ExcelTabNsId <- ns(make.names(input$file$name))
-                    ExcelTabTitle <- input$file$name
+                uploadExcelFile <- function(file){
+                    ExcelTabId <- make.names(file$name)
+                    ExcelTabNsId <- ns(make.names(file$name))
+                    ExcelTabTitle <- file$name
                     shiny::removeTab(inputId = "excels", ExcelTabId)
                     shiny::appendTab(inputId = "excels",
                                      ExcelUi(id = ExcelTabNsId, title = ExcelTabTitle),
                                      select = TRUE)
-                    ExcelSrv(id = ExcelTabId, ExcelFile = input$file)
+                    ExcelSrv(id = ExcelTabId, ExcelFile = file)
+                }
+                shiny::observeEvent(input$file,{
+                    for(nr in 1:length(input$file[, 1])){
+                        uploadExcelFile(
+                            file = input$file[nr,]
+                        )
+                    }
+                })
+                observe({
+                    serverFiles <- list.files(pattern = "*.xlsx") %>% 
+                        as_tibble() %>% 
+                        rename(name = value) %>% 
+                        bind_cols(list.files(pattern = "*.xlsx", full.names = TRUE) %>% 
+                                      as_tibble() %>% 
+                                      rename(datapath = value))
+                    for(nr in 1:length(serverFiles[1,])){
+                        uploadExcelFile(
+                            file = serverFiles[nr,]
+                        )
+                    }
                 })
             })
     }
@@ -205,7 +224,9 @@ ui <- shinyUI(
         "Shiny dynamic module Excel example",
         id = "ShinyDynModExcelEample",
         tabPanel("Excel Files", ShinyDynModExcelUi("ShinyDynModExcel")),
-        tabPanel(
+       tabPanel("Download example Excel files",
+                shiny::downloadButton("Excel files")),
+       tabPanel(
             "Any questions or comments can be sent to",
             br(),
             "Guido Berning: " ,
